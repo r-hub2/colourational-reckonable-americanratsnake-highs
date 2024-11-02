@@ -37,9 +37,9 @@ cupdlp_int PDHG_Clear(CUPDLPwork *w);
 
 void PDHG_PrintPDHGParam(CUPDLPwork *w);
 
-void PDHG_PrintHugeCUPDHG();
+void PDHG_PrintHugeCUPDHG(void);
 
-void PDHG_PrintUserParamHelper();
+void PDHG_PrintUserParamHelper(void);
 
 cupdlp_retcode getUserParam(int argc, char **argv,
                             cupdlp_bool *ifChangeIntParam, cupdlp_int *intParam,
@@ -191,3 +191,4 @@ void writeSol(const char *fout, cupdlp_int nCols, cupdlp_int nRows,
 }
 #endif
 #endif  // CUPDLP_CUPDLP_UTILS_H
+

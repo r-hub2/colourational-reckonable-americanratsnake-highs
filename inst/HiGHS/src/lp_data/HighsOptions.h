@@ -276,6 +276,7 @@ const string kSolutionFileString = "solution_file";
 const string kRangingString = "ranging";
 const string kVersionString = "version";
 const string kWriteModelFileString = "write_model_file";
+const string kWritePresolvedModelFileString = "write_presolved_model_file";
 const string kReadSolutionFileString = "read_solution_file";
 
 // String for HiGHS log file option
@@ -320,9 +321,11 @@ struct HighsOptionsStruct {
 
   std::string log_file;
   bool write_model_to_file;
+  bool write_presolved_model_to_file;
   bool write_solution_to_file;
   HighsInt write_solution_style;
   HighsInt glpsol_cost_row_location;
+  std::string write_presolved_model_file;
 
   // Control of HiGHS log
   bool output_flag;
@@ -341,6 +344,9 @@ struct HighsOptionsStruct {
   // Options for QP solver
   HighsInt qp_iteration_limit;
   HighsInt qp_nullspace_limit;
+
+  // Options for IIS calculation
+  HighsInt iis_strategy;
 
   // Advanced options
   HighsInt log_dev_level;
@@ -383,6 +389,8 @@ struct HighsOptionsStruct {
   bool less_infeasible_DSE_choose_row;
   bool use_original_HFactor_logic;
   bool run_centring;
+  double primal_residual_tolerance;
+  double dual_residual_tolerance;
   HighsInt max_centring_steps;
   double centring_ratio_tolerance;
 
@@ -461,9 +469,11 @@ struct HighsOptionsStruct {
         simplex_max_concurrency(0),
         log_file(""),
         write_model_to_file(false),
+        write_presolved_model_to_file(false),
         write_solution_to_file(false),
         write_solution_style(0),
         glpsol_cost_row_location(0),
+        write_presolved_model_file(""),
         output_flag(false),
         log_to_console(false),
         ipm_iteration_limit(0),
@@ -516,6 +526,8 @@ struct HighsOptionsStruct {
         run_centring(false),
         max_centring_steps(0),
         centring_ratio_tolerance(0.0),
+        primal_residual_tolerance(0.0),
+        dual_residual_tolerance(0.0),
         icrash(false),
         icrash_dualize(false),
         icrash_strategy(""),
@@ -547,7 +559,7 @@ struct HighsOptionsStruct {
 #endif
         mip_improving_solution_save(false),
         mip_improving_solution_report_sparse(false),
-        mip_improving_solution_file(""){};
+        mip_improving_solution_file("") {};
 };
 
 // For now, but later change so HiGHS properties are string based so that new
@@ -898,6 +910,16 @@ class HighsOptions : public HighsOptionsStruct {
                              advanced, &write_model_to_file, false);
     records.push_back(record_bool);
 
+    record_string = new OptionRecordString(
+        kWritePresolvedModelFileString, "Write presolved model file", advanced,
+        &write_presolved_model_file, kHighsFilenameDefault);
+    records.push_back(record_string);
+
+    record_bool = new OptionRecordBool(
+        "write_presolved_model_to_file", "Write the presolved model to a file",
+        advanced, &write_presolved_model_to_file, false);
+    records.push_back(record_bool);
+
     record_bool = new OptionRecordBool(
         "mip_detect_symmetry", "Whether MIP symmetry should be detected",
         advanced, &mip_detect_symmetry, true);
@@ -1076,6 +1098,22 @@ class HighsOptions : public HighsOptionsStruct {
     record_int = new OptionRecordInt("qp_nullspace_limit",
                                      "Nullspace limit for QP solver", advanced,
                                      &qp_nullspace_limit, 0, 4000, kHighsIInf);
+    records.push_back(record_int);
+
+    record_int = new OptionRecordInt(
+        "iis_strategy",
+        "Strategy for IIS calculation: "
+        //        "Use LP and p"
+        "Prioritise rows (default) / "
+        //        "Use LP and p"
+        "Prioritise columns"
+        //        "Use unbounded dual ray and prioritise low number of rows
+        //        (default) / " "Use ray and prioritise low numbers of columns "
+        " (0/1"
+        //        "/2/3)",
+        ")",
+        advanced, &iis_strategy, kIisStrategyMin, kIisStrategyFromLpRowPriority,
+        kIisStrategyMax);
     records.push_back(record_int);
 
     // Fix the number of user settable options
@@ -1342,6 +1380,16 @@ class HighsOptions : public HighsOptionsStruct {
         "Centring stops when the ratio max(x_j*s_j) / min(x_j*s_j) is below "
         "this tolerance (default = 100)",
         advanced, &centring_ratio_tolerance, 0, 100, kHighsInf);
+    records.push_back(record_double);
+
+    record_double = new OptionRecordDouble(
+        "primal_residual_tolerance", "Primal residual tolerance", advanced,
+        &primal_residual_tolerance, 1e-10, 1e-7, kHighsInf);
+    records.push_back(record_double);
+
+    record_double = new OptionRecordDouble(
+        "dual_residual_tolerance", "Dual residual tolerance", advanced,
+        &dual_residual_tolerance, 1e-10, 1e-7, kHighsInf);
     records.push_back(record_double);
 
     // Set up the log_options aliases
